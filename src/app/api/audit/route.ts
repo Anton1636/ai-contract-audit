@@ -7,13 +7,99 @@ import { getGrade } from '@/lib/utils'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
+// Models priority
+const MODELS = [
+	'gemini-3-flash-preview',
+	'gemini-3.1-flash-lite-preview',
+	'gemini-2.5-flash-lite',
+]
+
+// Rate limiting
+const requestCounts = new Map<string, { count: number; resetTime: number }>()
+const MAX_REQUESTS_PER_HOUR = 10
+
+function checkRateLimit(ip: string): boolean {
+	const now = Date.now()
+	const record = requestCounts.get(ip)
+
+	if (!record || now > record.resetTime) {
+		requestCounts.set(ip, {
+			count: 1,
+			resetTime: now + 60 * 60 * 1000, // 10 requests per 1h
+		})
+		return true
+	}
+
+	if (record.count >= MAX_REQUESTS_PER_HOUR) {
+		return false
+	}
+
+	record.count++
+	return true
+}
+
+async function generateWithFallback(prompt: string): Promise<string> {
+	let lastError: Error | null = null
+
+	for (const modelName of MODELS) {
+		try {
+			console.log(`Trying model: ${modelName}`)
+
+			const model = genAI.getGenerativeModel({
+				model: modelName,
+				generationConfig: {
+					responseMimeType: 'application/json',
+					temperature: 0.1,
+				},
+			})
+
+			const result = await model.generateContent(prompt)
+			console.log(`Success with model: ${modelName}`)
+			return result.response.text()
+		} catch (error) {
+			console.error(`Model ${modelName} failed:`, error)
+			lastError = error as Error
+
+			// Check if error is 503 to decide whether to fallback or not
+			const is503 =
+				lastError.message.includes('503') ||
+				lastError.message.includes('Service Unavailable') ||
+				lastError.message.includes('high demand')
+
+			if (!is503) throw lastError
+
+			console.log(`Model ${modelName} is overloaded, trying next...`)
+		}
+	}
+
+	throw lastError || new Error('All models failed')
+}
+
 export async function POST(
 	request: NextRequest,
 ): Promise<NextResponse<AuditResponse>> {
 	try {
+		// 1. Rate limiting
+		const ip =
+			request.headers.get('x-forwarded-for') ||
+			request.headers.get('x-real-ip') ||
+			'anonymous'
+
+		if (!checkRateLimit(ip)) {
+			return NextResponse.json(
+				{
+					success: false,
+					error: `Rate limit exceeded. Maximum ${MAX_REQUESTS_PER_HOUR} audits per hour.`,
+				},
+				{ status: 429 },
+			)
+		}
+
+		// Parse body
 		const body = await request.json()
 		const { code } = body
 
+		// Validation
 		if (!code || typeof code !== 'string') {
 			return NextResponse.json(
 				{ success: false, error: 'No contract code provided' },
@@ -38,17 +124,10 @@ export async function POST(
 			)
 		}
 
-		const model = genAI.getGenerativeModel({
-			model: 'gemini-2.5-flash',
-			generationConfig: {
-				responseMimeType: 'application/json', // Gemini returns JSON
-				temperature: 0.1, // Keep it low for more deterministic output, important for structured JSON responses
-			},
-		})
+		// Generate audit with fallback
+		const responseText = await generateWithFallback(buildAuditPrompt(code))
 
-		const result = await model.generateContent(buildAuditPrompt(code))
-		const responseText = result.response.text()
-
+		//  Parse JSON
 		let auditData: AuditReport
 
 		try {
@@ -69,9 +148,11 @@ export async function POST(
 			)
 		}
 
+		//  Additional processing
 		auditData.grade = getGrade(auditData.score)
 		auditData.auditedAt = new Date().toISOString()
 
+		// Return the result
 		return NextResponse.json({
 			success: true,
 			data: auditData,
@@ -79,9 +160,11 @@ export async function POST(
 	} catch (error: unknown) {
 		console.error('Audit API error:', error)
 
-		// rate limit Gemini
 		if (error instanceof Error) {
-			if (error.message.includes('429')) {
+			if (
+				error.message.includes('429') ||
+				error.message.includes('RESOURCE_EXHAUSTED')
+			) {
 				return NextResponse.json(
 					{
 						success: false,
@@ -96,6 +179,19 @@ export async function POST(
 					{ status: 500 },
 				)
 			}
+			if (
+				error.message.includes('503') ||
+				error.message.includes('Service Unavailable')
+			) {
+				return NextResponse.json(
+					{
+						success: false,
+						error:
+							'AI service is currently overloaded. Please try again in a few minutes.',
+					},
+					{ status: 503 },
+				)
+			}
 		}
 
 		return NextResponse.json(
@@ -105,7 +201,6 @@ export async function POST(
 	}
 }
 
-// Block GET requests
 export async function GET(): Promise<NextResponse> {
 	return NextResponse.json(
 		{ success: false, error: 'Method not allowed' },
