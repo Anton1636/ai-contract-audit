@@ -3,12 +3,13 @@
 import { useState } from 'react'
 import CodeEditor from '@/components/CodeEditor'
 import AuditButton from '@/components/AuditButton'
-import { AuditStatus, AuditReport, AuditResponse } from '@/types/audit'
+import { AuditStatus, AuditReport as AuditReportType, AuditResponse } from "@/types/audit";
+import AuditReport from '@/components/AuditReport'
 
 export default function Home() {
 	const [code, setCode] = useState('')
 	const [status, setStatus] = useState<AuditStatus>('idle')
-	const [report, setReport] = useState<AuditReport | null>(null)
+	const [report, setReport] = useState<AuditReportType | null>(null);
 	const [error, setError] = useState<string | null>(null)
 
 	async function handleAudit() {
@@ -117,20 +118,8 @@ export default function Home() {
 					</div>
 				)}
 
-				{/* Success placeholder*/}
-				{status === 'success' && report && (
-					<div className='mt-6 p-6 rounded-xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400'>
-						<p className='font-medium'>
-							✅ Audit complete! Score: {report.score}/100 — Grade:{' '}
-							{report.grade}
-						</p>
-						<p className='text-sm mt-1 text-emerald-300/70'>
-							Found {report.vulnerabilities.length} vulnerabilities and{' '}
-							{report.gasOptimizations.length} gas optimizations.
-						</p>
-						<p className='text-xs mt-2 text-gray-500'>👀</p>
-					</div>
-				)}
+				{/* Audit Report */}
+				{status === 'success' && report && <AuditReport report={report} />}
 			</div>
 		</main>
 	)
