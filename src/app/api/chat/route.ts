@@ -39,6 +39,7 @@ async function generateChatResponse(prompt: string): Promise<string> {
 export async function POST(request: NextRequest) {
 	try {
 		const body = await request.json()
+		console.log('Chat API body:', JSON.stringify(body, null, 2))
 		const {
 			contractCode,
 			auditReport,
@@ -58,30 +59,20 @@ export async function POST(request: NextRequest) {
 			)
 		}
 
-		if (!contractCode || !auditReport) {
-			return NextResponse.json(
-				{
-					success: false,
-					error: 'Contract code and audit report are required',
-				},
-				{ status: 400 },
-			)
-		}
-
-		const auditSummary = `
-Contract: ${auditReport.contractName}
-Score: ${auditReport.score}/100 (Grade: ${auditReport.grade})
-Summary: ${auditReport.summary}
-Vulnerabilities found: ${auditReport.vulnerabilities.length}
-${auditReport.vulnerabilities
-	.map(v => `- [${v.severity}] ${v.title}: ${v.description}`)
-	.join('\n')}
-Gas optimizations: ${auditReport.gasOptimizations.length}
-Overall recommendation: ${auditReport.overallRecommendation}
-    `.trim()
+		const auditSummary = auditReport
+			? `
+				Contract: ${auditReport.contractName}
+				Score: ${auditReport.score}/100 (Grade: ${auditReport.grade})
+				Summary: ${auditReport.summary}
+				Vulnerabilities: ${auditReport.vulnerabilities
+					.map(v => `- [${v.severity}] ${v.title}: ${v.description}`)
+					.join('\n')}
+				Overall recommendation: ${auditReport.overallRecommendation}
+      `.trim()
+			: 'No audit has been performed yet.'
 
 		const prompt = buildChatPrompt(
-			contractCode,
+			contractCode || '',
 			auditSummary,
 			message,
 			history.map(m => ({ role: m.role, content: m.content })),

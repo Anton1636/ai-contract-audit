@@ -175,7 +175,6 @@ export default function Home() {
 						{status === 'success' && report && (
 							<>
 								<AuditReport report={report} />
-								<ChatPanel contractCode={code} auditReport={report} />
 							</>
 						)}
 					</>
@@ -188,6 +187,12 @@ export default function Home() {
 					</div>
 				)}
 			</div>
+
+			{/* Floating AI Chat */}
+			<ChatPanel
+				contractCode={code || undefined}
+				auditReport={report || undefined}
+			/>
 		</main>
 	)
 }
