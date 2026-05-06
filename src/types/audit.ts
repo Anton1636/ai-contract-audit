@@ -5,13 +5,16 @@ export type Severity = 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW' | 'INFO'
 export interface Vulnerability {
 	id: number
 	severity: Severity
+	category: VulnerabilityCategory
 	title: string
 	description: string
+	impact: string
+	proofOfConcept: string
 	lineNumber?: number
 	codeSnippet?: string
 	recommendation: string
 	fixedCode?: string
-	realWorldExample?: string // link to a real-world hack
+	realWorldExample?: string
 }
 
 // Gas optimization
@@ -26,14 +29,15 @@ export interface GasOptimization {
 
 // Full audit report
 export interface AuditReport {
-	score: number // 0-100
+	score: number
 	grade: 'A' | 'B' | 'C' | 'D' | 'F'
 	summary: string
 	contractName?: string
+	scope?: string
 	vulnerabilities: Vulnerability[]
 	gasOptimizations: GasOptimization[]
 	overallRecommendation: string
-	auditedAt: string // ISO date
+	auditedAt: string
 }
 
 // Report status
@@ -49,4 +53,27 @@ export interface AuditResponse {
 	success: boolean
 	data?: AuditReport
 	error?: string
+}
+
+export type VulnerabilityCategory =
+	| 'Access Control'
+	| 'Reentrancy'
+	| 'Math Error'
+	| 'Logic Error'
+	| 'State Issue'
+	| 'Oracle'
+	| 'Missing Events'
+	| 'Integration Risk'
+	| 'Code Quality'
+
+export interface ChatMessage {
+	id: string
+	role: 'user' | 'assistant'
+	content: string
+	timestamp: string
+}
+
+export interface ChatState {
+	messages: ChatMessage[]
+	isLoading: boolean
 }

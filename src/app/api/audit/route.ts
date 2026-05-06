@@ -7,12 +7,15 @@ import { getGrade } from '@/lib/utils'
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY!)
 
-// Models priority
+// Models in priority order
 const MODELS = [
 	'gemini-3-flash-preview',
 	'gemini-3.1-flash-lite-preview',
 	'gemini-2.5-flash-lite',
 ]
+
+// In-memory cache
+const auditCache = new Map<string, AuditReport>()
 
 // Rate limiting
 const requestCounts = new Map<string, { count: number; resetTime: number }>()
@@ -25,7 +28,7 @@ function checkRateLimit(ip: string): boolean {
 	if (!record || now > record.resetTime) {
 		requestCounts.set(ip, {
 			count: 1,
-			resetTime: now + 60 * 60 * 1000, // 10 requests per 1h
+			resetTime: now + 60 * 60 * 1000,
 		})
 		return true
 	}
@@ -49,7 +52,7 @@ async function generateWithFallback(prompt: string): Promise<string> {
 				model: modelName,
 				generationConfig: {
 					responseMimeType: 'application/json',
-					temperature: 0.1,
+					temperature: 0, // max determinism
 				},
 			})
 
@@ -60,7 +63,6 @@ async function generateWithFallback(prompt: string): Promise<string> {
 			console.error(`Model ${modelName} failed:`, error)
 			lastError = error as Error
 
-			// Check if error is 503 to decide whether to fallback or not
 			const is503 =
 				lastError.message.includes('503') ||
 				lastError.message.includes('Service Unavailable') ||
@@ -79,7 +81,7 @@ export async function POST(
 	request: NextRequest,
 ): Promise<NextResponse<AuditResponse>> {
 	try {
-		// 1. Rate limiting
+		// Rate limiting
 		const ip =
 			request.headers.get('x-forwarded-for') ||
 			request.headers.get('x-real-ip') ||
@@ -124,10 +126,19 @@ export async function POST(
 			)
 		}
 
-		// Generate audit with fallback
+		// Check cache
+		const codeHash = Buffer.from(code).toString('base64').slice(0, 64)
+
+		if (auditCache.has(codeHash)) {
+			console.log('Cache hit — returning cached result')
+			const cached = auditCache.get(codeHash)!
+			return NextResponse.json({ success: true, data: cached })
+		}
+
+		// Generate with fallback
 		const responseText = await generateWithFallback(buildAuditPrompt(code))
 
-		//  Parse JSON
+		// parse response
 		let auditData: AuditReport
 
 		try {
@@ -148,11 +159,15 @@ export async function POST(
 			)
 		}
 
-		//  Additional processing
+		// Add fields
 		auditData.grade = getGrade(auditData.score)
 		auditData.auditedAt = new Date().toISOString()
 
-		// Return the result
+		// Save to cache
+		auditCache.set(codeHash, auditData)
+		console.log(`Cached result for hash: ${codeHash}`)
+
+		//  Return response
 		return NextResponse.json({
 			success: true,
 			data: auditData,

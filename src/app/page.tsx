@@ -3,14 +3,23 @@
 import { useState } from 'react'
 import CodeEditor from '@/components/CodeEditor'
 import AuditButton from '@/components/AuditButton'
-import { AuditStatus, AuditReport as AuditReportType, AuditResponse } from "@/types/audit";
+import {
+	AuditStatus,
+	AuditReport as AuditReportType,
+	AuditResponse,
+} from '@/types/audit'
 import AuditReport from '@/components/AuditReport'
+import HistoryPanel from '@/components/HistoryPanel'
+import { saveToHistory } from '@/lib/historyStorage'
+import type { HistoryEntry } from '@/lib/historyStorage'
+import ChatPanel from '@/components/ChatPanel'
 
 export default function Home() {
 	const [code, setCode] = useState('')
 	const [status, setStatus] = useState<AuditStatus>('idle')
-	const [report, setReport] = useState<AuditReportType | null>(null);
+	const [report, setReport] = useState<AuditReportType | null>(null)
 	const [error, setError] = useState<string | null>(null)
+	const [activeTab, setActiveTab] = useState<'audit' | 'history'>('audit')
 
 	async function handleAudit() {
 		if (!code.trim()) return
@@ -30,6 +39,7 @@ export default function Home() {
 			if (data.success && data.data) {
 				setReport(data.data)
 				setStatus('success')
+				saveToHistory(code, data.data)
 			} else {
 				setError(data.error || 'Unknown error occurred')
 				setStatus('error')
@@ -38,6 +48,13 @@ export default function Home() {
 			setError('Failed to connect to server')
 			setStatus('error')
 		}
+	}
+
+	function handleLoadFromHistory(entry: HistoryEntry) {
+		setCode(entry.contractCode)
+		setReport(entry.report)
+		setStatus('success')
+		setActiveTab('audit')
 	}
 
 	return (
@@ -85,7 +102,7 @@ export default function Home() {
 			{/* Main Content */}
 			<div className='max-w-6xl mx-auto px-6 py-10'>
 				{/* Hero */}
-				<div className='text-center mb-10'>
+				<div className='text-center mb-8'>
 					<h2 className='text-4xl font-bold text-white mb-3 tracking-tight'>
 						Smart Contract Security Audit
 					</h2>
@@ -95,31 +112,81 @@ export default function Home() {
 					</p>
 				</div>
 
-				{/* Editor Section */}
-				<div className='bg-gray-900 rounded-2xl border border-gray-800 p-6 mb-4 shadow-xl'>
-					<CodeEditor
-						value={code}
-						onChange={setCode}
-						disabled={status === 'loading'}
-					/>
+				{/* Tabs */}
+				<div
+					className='flex gap-1 mb-6 bg-gray-900 p-1 rounded-xl 
+                        border border-gray-800 w-fit'
+				>
+					<button
+						onClick={() => setActiveTab('audit')}
+						className={`px-5 py-2 rounded-lg text-sm font-medium 
+                        transition-all duration-200
+                        ${
+													activeTab === 'audit'
+														? 'bg-emerald-500 text-gray-950'
+														: 'text-gray-400 hover:text-white'
+												}`}
+					>
+						Audit
+					</button>
+					<button
+						onClick={() => setActiveTab('history')}
+						className={`px-5 py-2 rounded-lg text-sm font-medium 
+                        transition-all duration-200
+                        ${
+													activeTab === 'history'
+														? 'bg-emerald-500 text-gray-950'
+														: 'text-gray-400 hover:text-white'
+												}`}
+					>
+						History
+					</button>
 				</div>
 
-				{/* Audit Button */}
-				<AuditButton
-					onClick={handleAudit}
-					status={status}
-					disabled={!code.trim()}
-				/>
+				{/* Audit Tab */}
+				{activeTab === 'audit' && (
+					<>
+						<div
+							className='bg-gray-900 rounded-2xl border border-gray-800 
+                            p-6 mb-4 shadow-xl'
+						>
+							<CodeEditor
+								value={code}
+								onChange={setCode}
+								disabled={status === 'loading'}
+							/>
+						</div>
 
-				{/* Error */}
-				{status === 'error' && error && (
-					<div className='mt-6 p-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400'>
-						<p className='font-medium'>⚠️ {error}</p>
-					</div>
+						<AuditButton
+							onClick={handleAudit}
+							status={status}
+							disabled={!code.trim()}
+						/>
+
+						{status === 'error' && error && (
+							<div
+								className='mt-6 p-4 rounded-xl bg-red-500/10 
+                              border border-red-500/30 text-red-400'
+							>
+								<p className='font-medium'>⚠️ {error}</p>
+							</div>
+						)}
+
+						{status === 'success' && report && (
+							<>
+								<AuditReport report={report} />
+								<ChatPanel contractCode={code} auditReport={report} />
+							</>
+						)}
+					</>
 				)}
 
-				{/* Audit Report */}
-				{status === 'success' && report && <AuditReport report={report} />}
+				{/* History Tab */}
+				{activeTab === 'history' && (
+					<div className='bg-gray-900 rounded-2xl border border-gray-800 p-6'>
+						<HistoryPanel onLoad={handleLoadFromHistory} />
+					</div>
+				)}
 			</div>
 		</main>
 	)
