@@ -138,8 +138,8 @@ Return ONLY valid JSON:
 }
 
 export function buildExplainPrompt(
-	vulnerabilityTitle: string,
-	codeSnippet: string,
+	_vulnerabilityTitle: string,
+	_codeSnippet: string,
 ): string {
 	return ''
 }
