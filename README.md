@@ -20,6 +20,12 @@
   </a>
 </p>
 
+<p align="center">
+  <a href="https://ai-contract-audit.vercel.app/">
+    <img src="https://img.shields.io/badge/Live_Demo-Visit_Site-10b981?style=for-the-badge&logo=vercel&logoColor=white" />
+  </a>
+</p>
+
 </div>
 
 ---
