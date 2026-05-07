@@ -1,40 +1,48 @@
 {
-  "name": "ai-contract-auditor",
-  "version": "0.1.0",
-  "private": true,
-  "scripts": {
-    "dev": "next dev",
-    "build": "next build",
-    "start": "next start",
-    "lint": "eslint"
-  },
-  "dependencies": {
-    "@google/generative-ai": "^0.24.1",
-    "@monaco-editor/react": "^4.7.0",
-    "@react-pdf/renderer": "^4.5.1",
-    "clsx": "^2.1.1",
-    "lucide-react": "^1.14.0",
-    "monaco-editor": "^0.55.1",
-    "next": "16.2.4",
-    "react": "19.2.4",
-    "react-dom": "19.2.4",
-    "tailwind-merge": "^3.5.0"
-  },
-  "devDependencies": {
-    "@playwright/test": "^1.59.1",
-    "@tailwindcss/postcss": "^4",
-    "@testing-library/jest-dom": "^6.9.1",
-    "@testing-library/react": "^16.3.2",
-    "@types/node": "^20",
-    "@types/react": "^19",
-    "@types/react-dom": "^19",
-    "@types/react-pdf": "^6.2.0",
-    "eslint": "^9",
-    "eslint-config-next": "16.2.4",
-    "eslint-config-prettier": "^10.1.8",
-    "jest": "^30.3.0",
-    "prettier": "^3.8.3",
-    "tailwindcss": "^4",
-    "typescript": "^5"
-  }
+	"name": "ai-contract-auditor",
+	"version": "0.1.0",
+	"private": true,
+	"scripts": {
+		"dev": "next dev",
+		"build": "next build",
+		"start": "next start",
+		"lint": "eslint",
+		"test": "jest",
+		"test:watch": "jest --watch",
+		"test:coverage": "jest --coverage"
+	},
+	"dependencies": {
+		"@google/generative-ai": "^0.24.1",
+		"@monaco-editor/react": "^4.7.0",
+		"@react-pdf/renderer": "^4.5.1",
+		"clsx": "^2.1.1",
+		"lucide-react": "^1.14.0",
+		"monaco-editor": "^0.55.1",
+		"next": "16.2.4",
+		"react": "19.2.4",
+		"react-dom": "19.2.4",
+		"tailwind-merge": "^3.5.0"
+	},
+	"devDependencies": {
+		"@playwright/test": "^1.59.1",
+		"@tailwindcss/postcss": "^4",
+		"@testing-library/jest-dom": "^6.9.1",
+		"@testing-library/react": "^16.3.2",
+		"@testing-library/user-event": "^14.6.1",
+		"@types/jest": "^30.0.0",
+		"@types/node": "^20",
+		"@types/react": "^19",
+		"@types/react-dom": "^19",
+		"@types/react-pdf": "^6.2.0",
+		"eslint": "^9",
+		"eslint-config-next": "16.2.4",
+		"eslint-config-prettier": "^10.1.8",
+		"identity-obj-proxy": "^3.0.0",
+		"jest": "^30.3.0",
+		"jest-environment-jsdom": "^30.3.0",
+		"prettier": "^3.8.3",
+		"tailwindcss": "^4",
+		"ts-jest": "^29.4.9",
+		"typescript": "^5"
+	}
 }
